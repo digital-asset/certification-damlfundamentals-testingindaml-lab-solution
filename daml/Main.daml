@@ -1,0 +1,28 @@
+module Main where
+
+import Daml.Script
+import Lab1
+
+
+-- Lab1 Problem 1
+setup: Script ()
+setup = script do 
+
+  -- allocate parties with the given display name 
+  airline <- allocatePartyWithHint "Epic Airlines" (PartyIdHint "EA")
+  customer <- allocatePartyWithHint "Customer" (PartyIdHint "Cust")
+
+  -- construct user-ids from text 
+  airlineId <- validateUserId "Epic"
+  aliceId <- validateUserId "Alice"
+
+  -- create users with the given rights 
+  createUser (User airlineId (Some airline)) [CanActAs airline]
+  createUser (User aliceId (Some customer)) [CanActAs customer]
+
+  
+  submit airline do 
+    createCmd AirlineService with 
+        customer = customer
+        airline = airline
+  return ()

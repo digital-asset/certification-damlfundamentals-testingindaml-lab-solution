@@ -1,0 +1,113 @@
+module TestLab3 where 
+
+import Daml.Script
+import Lab3
+import DA.Date (date, Month(Jan, Jul))
+
+
+-- create test-data structure
+data CLPData = CLPData with 
+    customer: Party 
+    airline: Party 
+    airlineServiceCid: ContractId AirlineService
+
+
+-- create function to allocate values to test-data structure
+setupCLPData: Text -> Text -> Script CLPData 
+setupCLPData t1 t2 = script do 
+    customer <- allocateParty (t1)
+    airline <- allocateParty (t2)
+    airlineServiceCid <- submit airline do 
+        createCmd AirlineService with 
+            customer 
+            airline
+    
+    return $ CLPData with 
+            ..
+
+testScript1: Script () 
+testScript1 = do 
+    clpData <- setupCLPData "Alice" "Epic"
+    now <- getTime
+    
+    aliceApplicationCid <- submit clpData.customer do 
+        exerciseCmd clpData.airlineServiceCid CreateBlankApplication 
+
+    aliceApplicationCid <- submit clpData.customer do 
+        exerciseCmd aliceApplicationCid SubmitApplication 
+            with 
+                appCustomer = clpData.customer 
+                appAirline = clpData.airline
+                customerId = "1234"
+                customerName = "Alice"
+                customerAddress = "ABC Main Street, NY"
+                customerEmail = "alice@wonderland.io"
+                customerPhone = "123-555-1234"
+                appTimeStamp = now 
+                customerDob = date 2000 Jan 10
+
+    aliceAccountCid <- submit clpData.airline do 
+        exerciseCmd aliceApplicationCid ReviewApplication 
+
+    
+    return ()
+
+
+testScript2: Script () 
+testScript2 = do 
+    customer1 <- allocateParty ("Alice")
+    customer2 <- allocateParty ("Bob")
+    airline <- allocateParty ("Epic")
+
+    airlineServiceCid <- submit airline do 
+        createCmd AirlineService with 
+            customer = customer1
+            airline
+
+    now <- getTime
+
+    aliceApplicationCid <- submit customer1 do 
+        exerciseCmd airlineServiceCid CreateBlankApplication 
+
+    aliceApplicationCid <- submit customer1 do 
+        exerciseCmd aliceApplicationCid SubmitApplication 
+            with 
+                appCustomer = customer1 
+                appAirline = airline
+                customerId = "1234"
+                customerName = "Alice"
+                customerAddress = "ABC Main Street, NY"
+                customerEmail = "alice@wonderland.io"
+                customerPhone = "123-555-1234"
+                appTimeStamp = now 
+                customerDob = date 2000 Jan 10
+
+    aliceAccountCid <- submit airline do 
+        exerciseCmd aliceApplicationCid ReviewApplication 
+
+    airlineServiceCid <- submit airline do 
+        createCmd AirlineService with 
+            customer = customer2
+            airline
+
+    bobApplicationCid <- submit customer2 do 
+        exerciseCmd airlineServiceCid CreateBlankApplication 
+
+    bobApplicationCid <- submit customer2 do 
+        exerciseCmd bobApplicationCid SubmitApplication 
+            with 
+                appCustomer = customer2 
+                appAirline = airline
+                customerId = "1234"
+                customerName = "Bob"
+                customerAddress = "XYZC Main Street, NY"
+                customerEmail = "bob@nomansland.io"
+                customerPhone = "123-555-5678"
+                appTimeStamp = now 
+                customerDob = date 2000 Jul 10
+
+    bobAccountCid <- submit airline do 
+        exerciseCmd bobApplicationCid ReviewApplication 
+
+
+    return ()

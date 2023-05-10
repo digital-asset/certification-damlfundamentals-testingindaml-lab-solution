@@ -1,0 +1,117 @@
+module Lab2 where 
+
+import DA.Optional
+import DA.Date (toDateUTC)
+
+template CLPApplication 
+    with 
+        customer: Party 
+        airline: Party 
+
+        id: Text  --this is external id that is unique for a customer, e.g. driving-license no., SSN, etc.
+        name: Text
+        address: Text
+        email: Text
+        phone: Optional Text
+        timestamp: Time 
+        dob: Date 
+       
+    where 
+        signatory customer
+        observer airline 
+         
+        choice SubmitApplication: ContractId CLPApplication 
+            with 
+                appCustomer: Party 
+                appAirline: Party
+
+                customerId: Text
+                customerName: Text
+                customerAddress: Text
+                customerEmail: Text
+                customerPhone: Text
+                appTimeStamp: Time 
+                customerDob: Date 
+            controller customer 
+                do 
+                    create CLPApplication  
+                        with 
+                            customer = appCustomer
+                            airline = appAirline
+
+                            id = customerId
+                            name = customerName
+                            address = customerAddress
+                            email = customerEmail
+                            phone = Some customerPhone
+                            timestamp = appTimeStamp
+                            dob = customerDob 
+                        
+        choice ReviewApplication: Optional (ContractId CLPAccount)
+            controller airline 
+                do 
+                    account <- lookupByKey @CLPAccount (airline, id)
+                    now <- getTime
+                    if (isSome account) then 
+                        return None
+                    else do
+                        account <- create CLPAccount with                                
+                                timestamp = now                                 
+                                points = 0   
+                                ..
+                        return (Some account)
+
+template CLPAccount 
+    with
+        customer: Party 
+        airline: Party 
+
+        id: Text 
+        name: Text
+        address: Text
+        email: Text
+        phone: Optional Text
+        timestamp: Time 
+        dob: Date 
+        points: Int
+
+    where 
+        signatory customer, airline 
+
+        key (airline, id): (Party, Text)
+        maintainer key._1
+
+
+        choice AddPoints : ContractId CLPAccount 
+            with 
+                newPoints: Int 
+            controller airline 
+            do 
+                create CLPAccount with 
+                    points = points + newPoints
+                    ..
+
+template AirlineService 
+    with 
+        customer: Party
+        airline: Party 
+    where 
+        signatory airline 
+        observer customer 
+
+        nonconsuming choice CreateBlankApplication: ContractId CLPApplication
+            controller customer 
+                do 
+                    now <- getTime
+                    create CLPApplication 
+                        with 
+                        customer 
+                        airline 
+
+                        id = ""
+                        name = ""
+                        address = ""
+                        email = ""
+                        phone = Some ""
+                        timestamp = now
+                        dob = toDateUTC now

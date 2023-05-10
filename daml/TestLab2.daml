@@ -1,0 +1,100 @@
+module TestLab2 where 
+
+import Daml.Script
+import Lab2
+import DA.Date (date, Month(Jan))
+import DA.Optional (fromSome)
+
+
+-- Problem 1
+
+-- create test-data structure
+data CLPData = CLPData with 
+    customer1: Party 
+    customer2: Party
+    airline: Party 
+    airlineServiceCid: ContractId AirlineService
+
+
+-- create function to allocate values to test-data structure
+setupCLPData: Text -> Text -> Text -> Script CLPData 
+setupCLPData t1 t2 t3 = script do 
+    customer1 <- allocateParty (t1)
+    customer2 <- allocateParty (t2)
+    airline <- allocateParty (t3)
+    airlineServiceCid <- submit airline do 
+        createCmd AirlineService with 
+            customer = customer1
+            airline
+    
+    return $ CLPData with 
+            ..
+
+-- test script to print the test-data
+testScript1: Script () 
+testScript1 = do 
+    clpData <- setupCLPData "Alice" "Bob" "Epic"
+    debug clpData.customer1
+    debug clpData.customer2
+    debug clpData.airline
+    debug clpData.airlineServiceCid
+    return ()
+
+
+-- test script for unhappy path
+testScript2: Script () 
+testScript2 = do 
+    clpData <- setupCLPData "Alice" "Bob" "Epic"
+    now <- getTime
+    
+    aliceApplicationCid <- submit clpData.customer1 do 
+        exerciseCmd clpData.airlineServiceCid CreateBlankApplication 
+
+    submitMustFail clpData.customer2 do 
+        exerciseCmd aliceApplicationCid SubmitApplication 
+            with 
+                appCustomer = clpData.customer1 
+                appAirline = clpData.airline
+                customerId = "123"
+                customerName = "Alice"
+                customerAddress = "ABC Main Street, NY"
+                customerEmail = "alice@wonderland.io"
+                customerPhone = "123-555-1234"
+                appTimeStamp = now 
+                customerDob = date 2000 Jan 10
+
+--     return ()
+
+-- -- test script for happy path
+-- testScript3: Script ()
+-- testScript3 = script do
+--     clpData <- setupCLPData "Alice" "Bob" "Epic"
+--     now <- getTime
+    
+--     aliceApplicationCid <- submit clpData.customer1 do 
+--         exerciseCmd clpData.airlineServiceCid CreateBlankApplication 
+
+    aliceApplicationCid <- submit clpData.customer1 do 
+        exerciseCmd aliceApplicationCid SubmitApplication 
+            with 
+                appCustomer = clpData.customer1 
+                appAirline = clpData.airline
+                customerId = "123"
+                customerName = "Alice"
+                customerAddress = "ABC Main Street, NY"
+                customerEmail = "alice@wonderland.io"
+                customerPhone = "123-555-1234"
+                appTimeStamp = now 
+                customerDob = date 2000 Jan 10
+    
+    aliceAccountCid <- submit clpData.airline do 
+        exerciseCmd aliceApplicationCid ReviewApplication 
+
+    let cid = fromSome aliceAccountCid
+
+    aliceAccountCid <- submit clpData.airline do 
+        exerciseCmd cid AddPoints 
+            with newPoints = 100
+
+
+    return ()
