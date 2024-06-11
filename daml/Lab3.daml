@@ -55,7 +55,7 @@ template CLPApplication
                     now <- getTime
 
                     -- uncomment the following statement for Problem 3.2
-                    ---assertMsg "Assertion failure: Duplicate customer Id" (isSome account)
+                    ---assertMsg "Assertion failure: Duplicate customer Id" (isNone account)
 
                     if (isSome account) then do
                         -- uncomment the following statement for Problem 3.3
